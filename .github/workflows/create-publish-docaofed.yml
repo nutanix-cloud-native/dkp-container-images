@@ -43,7 +43,7 @@ on:
 jobs:
    create-publish-docaofed-driver:
     runs-on:
-      - self-hosted-cloudnative-small
+      - self-hosted-nutanix-docker-small
     permissions:
       contents: read
       packages: write
@@ -66,12 +66,6 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-    - name: Login to Docker Hub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKERHUB_READ_ONLY_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_READ_ONLY_PASSWORD }}
-
     - name: Login to GHCR
       uses: docker/login-action@v3
       with:
@@ -80,4 +74,4 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Create and publish doca-ofed driver
-      run: devbox run -- just publish-doca-ofed-driver ghcr.io/mesosphere ${{ inputs.linux_distro }} ${{ inputs.arch }} ${{ inputs.base_image }} ${{ inputs.kernel_version }} ${{ inputs.doca_version }} ${{ inputs.ofed_version }}
+      run: devbox run -- just publish-doca-ofed-driver ghcr.io/${GITHUB_REPOSITORY_OWNER} ${{ inputs.linux_distro }} ${{ inputs.arch }} ${{ inputs.base_image }} ${{ inputs.kernel_version }} ${{ inputs.doca_version }} ${{ inputs.ofed_version }}
