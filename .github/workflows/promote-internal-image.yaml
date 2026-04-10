@@ -1,0 +1,116 @@
+name: Promote internal image
+
+on:
+  workflow_dispatch:
+    inputs:
+      component:
+        description: "Component to promote"
+        type: choice
+        required: true
+        options:
+          - cloud-provider-nutanix
+          - cluster-api-provider-nutanix
+          - cluster-api-runtime-extensions-nutanix
+          - cluster-api-runtime-extensions-helm-chart-bundle-initializer
+      version:
+        description: "Image version/tag"
+        type: string
+        required: true
+
+permissions:
+  packages: write
+
+jobs:
+  promote_image:
+    runs-on:
+      - self-hosted-nutanix-docker-small
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve component source and target
+        id: resolve
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="${{ inputs.version }}"
+          component="${{ inputs.component }}"
+          harbor_registry="harbor.eng.nutanix.com/ncn-prerelease"
+
+          if [[ -z "$version" ]]; then
+            echo "version is a required input" >&2
+            exit 1
+          fi
+
+          case "$component" in
+            cloud-provider-nutanix)
+              build_context="nkp/cloud-provider-nutanix"
+              source_image="${harbor_registry}/internal-cloud-provider-nutanix/controller:${version}"
+              target_image="ghcr.io/${GITHUB_REPOSITORY}/nkp-cloud-provider-nutanix:${version}"
+              ;;
+            cluster-api-provider-nutanix)
+              build_context="nkp/cluster-api-provider-nutanix"
+              source_image="${harbor_registry}/internal-cluster-api-provider-nutanix:${version}"
+              target_image="ghcr.io/${GITHUB_REPOSITORY}/nkp-cluster-api-provider-nutanix:${version}"
+              ;;
+            cluster-api-runtime-extensions-nutanix)
+              build_context="nkp/cluster-api-runtime-extensions-nutanix"
+              source_image="${harbor_registry}/internal-cluster-api-runtime-extensions-nutanix:${version}"
+              target_image="ghcr.io/${GITHUB_REPOSITORY}/nkp-cluster-api-runtime-extensions-nutanix:${version}"
+              ;;
+            cluster-api-runtime-extensions-helm-chart-bundle-initializer)
+              build_context="nkp/cluster-api-runtime-extensions-helm-chart-bundle-initializer"
+              source_image="${harbor_registry}/internal-cluster-api-runtime-extensions-helm-chart-bundle-initializer:${version}"
+              target_image="ghcr.io/${GITHUB_REPOSITORY}/nkp-cluster-api-runtime-extensions-helm-chart-bundle-initializer:${version}"
+              ;;
+            *)
+              echo "Unsupported component: $component" >&2
+              exit 1
+              ;;
+          esac
+
+          if [[ ! -d "$build_context/NOTICES" ]]; then
+            echo "NOTICES directory not found for component: $component" >&2
+            exit 1
+          fi
+
+          shopt -s nullglob
+          notice_candidates=("$build_context"/NOTICES/*)
+          notice_files=()
+          for file in "${notice_candidates[@]}"; do
+            if [[ -f "$file" ]]; then
+              notice_files+=("$file")
+            fi
+          done
+
+          if [[ "${#notice_files[@]}" -ne 1 ]]; then
+            echo "Expected exactly one notices file in $build_context/NOTICES, found ${#notice_files[@]}" >&2
+            exit 1
+          fi
+
+          echo "build_context=$build_context" >> "$GITHUB_OUTPUT"
+          echo "source_image=$source_image" >> "$GITHUB_OUTPUT"
+          echo "target_image=$target_image" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push promoted image
+        uses: docker/build-push-action@v5.1.0
+        with:
+          context: ./${{ steps.resolve.outputs.build_context }}
+          push: true
+          tags: ${{ steps.resolve.outputs.target_image }}
+          build-args: |
+            SOURCE_IMAGE=${{ steps.resolve.outputs.source_image }}
