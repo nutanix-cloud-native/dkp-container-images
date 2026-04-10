@@ -106,10 +106,33 @@ jobs:
           echo "source_image=$source_image" >> "$GITHUB_OUTPUT"
           echo "target_image=$target_image" >> "$GITHUB_OUTPUT"
 
+      - name: Detect source image platforms
+        id: platforms
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_image="${{ steps.resolve.outputs.source_image }}"
+          manifest="$(docker manifest inspect "${source_image}" 2>/dev/null || true)"
+          if [[ -n "${manifest}" ]]; then
+            platforms="$(echo "${manifest}" | jq -r '
+              [(.manifests // [])[]
+                | select(.platform.os != null and .platform.os != "unknown")
+                | .platform
+                | .os + "/" + .architecture + (if .variant then "/" + .variant else "" end)
+              ] | join(",")')"
+          fi
+          if [[ -z "${platforms:-}" ]]; then
+            platforms="linux/amd64"
+          fi
+          echo "Detected platforms: ${platforms}"
+          echo "platforms=${platforms}" >> "$GITHUB_OUTPUT"
+
       - name: Build and push promoted image
         uses: docker/build-push-action@v5.1.0
         with:
           context: ./${{ steps.resolve.outputs.build_context }}
+          platforms: ${{ steps.platforms.outputs.platforms }}
+          provenance: false
           push: true
           tags: ${{ steps.resolve.outputs.target_image }}
           build-args: |
