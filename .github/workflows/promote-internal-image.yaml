@@ -50,9 +50,16 @@ jobs:
           version="${{ inputs.version }}"
           component="${{ inputs.component }}"
           harbor_registry="harbor.eng.nutanix.com/ncn-prerelease"
+          default_branch="${{ github.event.repository.default_branch }}"
+          current_ref="${{ github.ref_name }}"
 
           if [[ -z "$version" ]]; then
             echo "version is a required input" >&2
+            exit 1
+          fi
+
+          if [[ "$current_ref" == "$default_branch" ]]; then
+            echo "Image promotion must run from a non-default branch that contains release-specific NOTICES content." >&2
             exit 1
           fi
 
@@ -84,7 +91,7 @@ jobs:
           esac
 
           if [[ ! -d "$build_context/NOTICES" ]]; then
-            echo "NOTICES directory not found for component: $component" >&2
+            echo "NOTICES directory not found for component: $component. Add release-specific NOTICES content on this branch before promoting." >&2
             exit 1
           fi
 
@@ -98,7 +105,7 @@ jobs:
           done
 
           if [[ "${#notice_files[@]}" -ne 1 ]]; then
-            echo "Expected exactly one notices file in $build_context/NOTICES, found ${#notice_files[@]}" >&2
+            echo "Expected exactly one release-specific notices file in $build_context/NOTICES, found ${#notice_files[@]}" >&2
             exit 1
           fi
 

@@ -12,18 +12,22 @@ component-specific notices file into `/NOTICES/` in the target image.
 - `cluster-api-runtime-extensions-helm-chart-bundle-initializer` (CAREN initializer)
 
 Each component must contain exactly one non-hidden file in its `NOTICES/`
-directory at workflow runtime.
+directory at workflow runtime. `main` intentionally does not carry release
+notice content.
 
 ## Operating model
 
-1. Create/update a branch and add the component notice file under:
+1. Create/update a non-default branch and add the component notice file under:
    - `nkp/<component>/NOTICES/<notice-file>`
 2. Ensure that the component's `NOTICES/` directory has exactly one non-hidden
    file (dotfiles such as `.gitkeep` are ignored by the workflow check).
-3. Trigger GitHub Actions workflow `Promote internal image` with:
+3. Trigger GitHub Actions workflow `Promote internal image` from that branch
+   with:
    - `component`: one of CCM/CAPX/CAREN component values
    - `version`: image version/tag only
-4. Verify the promoted image contains `/NOTICES/<notice-file>`.
+4. If the branch does not contain release-specific `NOTICES` content, the
+   workflow will stop before promotion.
+5. Verify the promoted image contains `/NOTICES/<notice-file>`.
 
 The workflow uses fixed Harbor sources and fixed GHCR target image names:
 
