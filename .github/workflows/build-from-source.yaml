@@ -71,6 +71,8 @@ jobs:
             IMAGE_VALUES=$(SOURCE_VERSION=${{ inputs.source-version }} make image-values)
             export $(echo "$IMAGE_VALUES" | xargs)
             echo "target_image=$TARGET_IMAGE" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: Build and push image
         id: build
