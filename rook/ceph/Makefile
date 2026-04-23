@@ -1,5 +1,5 @@
 SOURCE_IMAGE_REPO ?= rook/ceph
-SOURCE_IMAGE_VERSION ?= v1.14.5
+SOURCE_IMAGE_VERSION ?= v1.14.9
 SOURCE_IMAGE ?= $(SOURCE_IMAGE_REPO):$(SOURCE_IMAGE_VERSION)
 
 REPO ?= $(shell gh repo view --json name --template '{{.name}}')

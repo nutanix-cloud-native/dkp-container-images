@@ -1,5 +1,5 @@
 SOURCE_IMAGE_REPO ?= quay.io/ceph/ceph
-SOURCE_IMAGE_VERSION ?= v18.2.2
+SOURCE_IMAGE_VERSION ?= v19.1.0
 SOURCE_IMAGE ?= $(SOURCE_IMAGE_REPO):$(SOURCE_IMAGE_VERSION)
 
 REPO ?= $(shell gh repo view --json name --template '{{.name}}')
