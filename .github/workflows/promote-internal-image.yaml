@@ -120,13 +120,6 @@ jobs:
           echo "source_image=$source_image" >> "$GITHUB_OUTPUT"
           echo "target_image=$target_image" >> "$GITHUB_OUTPUT"
 
-      - name: Login to Nutanix Harbor
-        uses: docker/login-action@v3
-        with:
-          registry: harbor.eng.nutanix.com
-          username: ${{ secrets.ENG_HARBOR_USERNAME }}
-          password: ${{ secrets.ENG_HARBOR_PASSWORD }}
-
       - name: Detect source image platforms
         id: platforms
         shell: bash
