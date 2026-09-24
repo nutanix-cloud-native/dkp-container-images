@@ -151,3 +151,33 @@ jobs:
           tags: ${{ steps.resolve.outputs.target_image }}
           build-args: |
             SOURCE_IMAGE=${{ steps.resolve.outputs.source_image }}
+
+  promote_ccm_helm_chart:
+    name: Promote CCM Helm chart
+    if: ${{ inputs.component == 'cloud-provider-nutanix' }}
+    needs: promote_image
+    runs-on:
+      - self-hosted-nutanix-docker-small
+    steps:
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Promote Helm chart
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          version="${VERSION#v}"
+          chart_dir="${RUNNER_TEMP}/ccm-chart"
+          image_repo="ghcr.io/${GITHUB_REPOSITORY}/nkp-cloud-provider-nutanix"
+
+          helm registry login ghcr.io --username "${{ github.actor }}" --password "${{ secrets.GITHUB_TOKEN }}"
+          helm pull oci://ghcr.io/nutanix-cloud-native/internal-cloud-provider-nutanix/nutanix-cloud-provider \
+            --version "${version}" --untar --untardir "${chart_dir}"
+
+          sed -i "s|^  repository: .*|  repository: ${image_repo}|" \
+            "${chart_dir}/nutanix-cloud-provider/values.yaml"
+
+          helm package "${chart_dir}/nutanix-cloud-provider" --destination "${chart_dir}"
+          helm push "${chart_dir}/"*.tgz \
+            oci://ghcr.io/${GITHUB_REPOSITORY}/nkp-cloud-provider-nutanix-helm-chart
