@@ -172,7 +172,14 @@ jobs:
           mkdir -p "${chart_dir}"
 
           helm pull oci://harbor.eng.nutanix.com/ncn-prerelease/chart/nkp-cloud-provider-nutanix \
-            --version "${version}" --destination "${chart_dir}"
+            --version "${version}" --untar --untardir "${chart_dir}"
+
+          chart_src="${chart_dir}/nkp-cloud-provider-nutanix"
+          image_repo="ghcr.io/${GITHUB_REPOSITORY}/nkp-cloud-provider-nutanix"
+          sed -i "s|^  repository: .*|  repository: ${image_repo}|" \
+            "${chart_src}/values.yaml"
+
+          helm package "${chart_src}" --destination "${chart_dir}"
 
           helm registry login ghcr.io --username "${{ github.actor }}" --password "${{ secrets.GITHUB_TOKEN }}"
           helm push "${chart_dir}/nkp-cloud-provider-nutanix-${version}.tgz" \
