@@ -51,7 +51,7 @@ So **DKP’s mirrored images from `ghcr.io/nutanix-cloud-native/dkp-container-im
 
 ## Adding a new image
 
-Choose one of two patterns depending on whether the image is built from an **in-repo Dockerfile** or from **upstream source**.
+Choose a pattern depending on whether the image is built from an **in-repo Dockerfile**, from **upstream source**, or from an **internal Nutanix fork**.
 
 ### Option A: In-repo Dockerfile (rebuild / repackage upstream)
 
@@ -107,6 +107,32 @@ Use this when the image is built by **cloning an upstream repo** and building th
    - **platforms:** default `linux/amd64`.
    - **push:** set to `true` to push to GHCR.
 
+### Option C: Build from a Nutanix fork
+
+Use this when the image is built by **cloning a private internal Nutanix fork** (e.g. COSI controller from `nutanix-cloud-native/container-object-storage-interface`). Do **not** use **Build image from source** for these; that workflow cannot check out private forks.
+
+1. **Add a preset** in [`.github/workflows/build-from-nutanix-fork.yaml`](.github/workflows/build-from-nutanix-fork.yaml):
+   - Add the name to the `preset` `choice` options.
+   - Add a `case` branch that sets `owner`, `repository`, `dockerfile` (path in the fork), and `image_name` (GHCR image under this repo).
+
+2. **Use a Nutanix-specific git ref.** `source-version` **must contain `nutanix`** (e.g. `v0.2.2-nutanix.1`). The workflow rejects other refs so it cannot collide with upstream-versioned tags produced by **Rebuild image** or **Build image from source**.
+
+3. **Build and push via GitHub Actions:**
+   - **Actions → Build image from a Nutanix fork**
+   - **preset:** e.g. `cosi-controller`
+   - **source-version:** tag/branch/commit that contains `nutanix`
+   - **build-args:** optional; extra args in `KEY=VALUE` form (the COSI controller preset needs none)
+   - **platforms:** default `linux/amd64`
+   - **push:** set to `true` to push to GHCR
+
+The workflow authenticates to the private fork with a GitHub App (`GHA_CHECKOUT_APP_ID` / `GHA_CHECKOUT_APP_PRIVATE_KEY`). App-token `owner` is per-preset so forks can live in `nutanix-cloud-native` or another Nutanix org.
+
+Current presets:
+
+| Preset | Fork | Dockerfile | GHCR image |
+|--------|------|------------|------------|
+| `cosi-controller` | `nutanix-cloud-native/container-object-storage-interface` | `controller/Dockerfile` | `ghcr.io/nutanix-cloud-native/dkp-container-images/objectstorage-controller:<source-version>` |
+
 ---
 
 ## Updating an existing image
@@ -119,7 +145,10 @@ Use this when the image is built by **cloning an upstream repo** and building th
   - Run **Actions → Build image from source** with a new **source-version** (and any **build-args**). Set **push: true** to publish.
   - Optionally update the README or default version in the Makefile in this repo.
 
-In both cases, the image is pushed to **`ghcr.io/nutanix-cloud-native/dkp-container-images/...`** when **push** is enabled.
+- **Build from a Nutanix fork:**
+  - Run **Actions → Build image from a Nutanix fork** with the **preset** and a **source-version** that contains `nutanix`. Set **push: true** to publish.
+
+In all cases, the image is pushed to **`ghcr.io/nutanix-cloud-native/dkp-container-images/...`** when **push** is enabled.
 
 ---
 
@@ -135,6 +164,7 @@ The **CVE patch** workflow (Actions → **CVE patch**) rebuilds and patches exis
 |------|----------|-----------------|
 | New/updated image from in-repo Dockerfile | **Rebuild image** | `ghcr.io/nutanix-cloud-native/dkp-container-images/<directory>` |
 | New/updated image from upstream source | **Build image from source** | `ghcr.io/nutanix-cloud-native/dkp-container-images/<source-repo path>` |
+| New/updated image from an internal Nutanix fork | **Build image from a Nutanix fork** | `ghcr.io/nutanix-cloud-native/dkp-container-images/<preset image name>` |
 | Patch existing images for CVEs | **CVE patch** | Same GHCR locations |
 
-Per-image details (build args, versions, extensions) are documented in each component’s README (e.g. `ceph/ceph/README.md`, `kube-oidc-proxy/README.md`, `opencost/opencost-ui/README.md`).
+Per-image details (build args, versions, extensions) are documented in each component’s README (e.g. `ceph/ceph/README.md`, `kube-oidc-proxy/README.md`, `opencost/opencost-ui/README.md`, `cosi/objectstorage-controller/README.md`).
