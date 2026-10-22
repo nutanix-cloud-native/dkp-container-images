@@ -19,11 +19,11 @@ This image should be built using the `build-from-source.yaml` workflow:
 1. Navigate to Actions → "Build image from source"
 2. Run workflow with parameters:
    - **source-repo**: `opencost/opencost-ui`
-   - **source-version**: Version tag (e.g., `1.117.5`)
-   - **target-image**: `ghcr.io/nutanix-cloud-native/dkp-container-images/opencost/opencost-ui`
+   - **source-version**: Version tag (e.g., `1.119.2`)
+   - **platforms**: `linux/amd64,linux/arm64` (workflow default; required for arm64 workload clusters)
    - **push**: Enable to push to registry
 
-Build arguments are automatically extracted from the Makefile.
+Build arguments are automatically extracted from the Makefile. The image tag is derived from `source-version` (leading `v` stripped), e.g. `ghcr.io/nutanix-cloud-native/dkp-container-images/opencost/opencost-ui:1.119.2`.
 
 ### Local Testing
 

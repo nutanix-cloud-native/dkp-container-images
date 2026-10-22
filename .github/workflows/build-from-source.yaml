@@ -18,7 +18,7 @@ on:
       platforms:
         description: 'Comma separated list of platforms to build the image for'
         type: string
-        default: linux/amd64
+        default: linux/amd64,linux/arm64
       push:
         description: 'Push the image to registry'
         type: boolean
