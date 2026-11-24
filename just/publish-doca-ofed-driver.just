@@ -2,27 +2,36 @@
 # reference: https://docs.nvidia.com/networking/display/kubernetes25100/advanced/doca-drivers.html#precompiled-container-build-instructions-for-nvidia-doca-ofed-driver-container
 
 # Config
+# From DOCA 3.6 the public driver sources are published as
+# DOCA_BASE_SRC-debian-<doca>-<build>.tar.gz instead of
+# MLNX_OFED_SRC-debian-<ofed>.tgz. For 3.6.0 / 26.10-070000 that archive is
+# https://linux.mellanox.com/public/repo/doca/3.6.0/SOURCES/mlnx_ofed/DOCA_BASE_SRC-debian-3.6.0-070000.tar.gz
+# This commit constructs that URL (and still uses the legacy name for DOCA <= 3.5).
+# The Dockerfile also vendors install.pl and builds the entrypoint, so the whole tree is required.
 DOCA_BUILD_REPO   := "Mellanox/doca-driver-build"
-DOCA_BUILD_COMMIT := "661561f9969516748c35235e15bda27216807152"
+DOCA_BUILD_COMMIT := "3bd13302cf9b48dbc8cfe7a2c55483423e2ef5d1"
 DOCABUILDER_DIR   := "doca-builder"
 
-# Create the doca-builder directory
+# Create a clean doca-builder directory
 _ensure-dir:
+    @rm -rf "{{ DOCABUILDER_DIR }}"
     @mkdir -p "{{ DOCABUILDER_DIR }}"
 
-# Download a single artifact from the DOCA build repo
-_download-artifact artifact: _ensure-dir
-    @echo "  Downloading {{ artifact }}..."
+# Download the DOCA driver build sources into doca-builder/
+download-doca-artifacts: _ensure-dir
+    @echo "Downloading DOCA build sources @ {{ DOCA_BUILD_COMMIT }}..."
     @wget -q --show-progress \
-      "https://raw.githubusercontent.com/{{ DOCA_BUILD_REPO }}/{{ DOCA_BUILD_COMMIT }}/{{ artifact }}" \
-      -O "{{ DOCABUILDER_DIR }}/{{ artifact }}"
-
-# Download DOCA build artifacts into doca-builder/
-download-doca-artifacts: (_download-artifact "Ubuntu_Dockerfile") \
-                         (_download-artifact "entrypoint.sh") \
-                         (_download-artifact "dtk_nic_driver_build.sh")
-    @echo "Download complete. Setting executable permissions..."
-    @chmod +x "{{ DOCABUILDER_DIR }}/entrypoint.sh" "{{ DOCABUILDER_DIR }}/dtk_nic_driver_build.sh"
+      "https://github.com/{{ DOCA_BUILD_REPO }}/archive/{{ DOCA_BUILD_COMMIT }}.tar.gz" \
+      -O "{{ DOCABUILDER_DIR }}/doca-driver-build.tar.gz"
+    @tar -xzf "{{ DOCABUILDER_DIR }}/doca-driver-build.tar.gz" -C "{{ DOCABUILDER_DIR }}" --strip-components=1
+    @rm -f "{{ DOCABUILDER_DIR }}/doca-driver-build.tar.gz"
+    @chmod +x \
+      "{{ DOCABUILDER_DIR }}/entrypoint.sh" \
+      "{{ DOCABUILDER_DIR }}/loader.sh" \
+      "{{ DOCABUILDER_DIR }}/dtk_nic_driver_build.sh" \
+      "{{ DOCABUILDER_DIR }}/stig-fixer.sh" \
+      "{{ DOCABUILDER_DIR }}/vendor/mlnx_ofed/stage_src_tree.sh"
+    @echo "Download complete."
 
 # Map Linux distribution to Dockerfile name
 _dockerfile-for distro:
